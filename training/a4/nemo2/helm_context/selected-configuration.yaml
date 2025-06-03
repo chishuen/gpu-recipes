@@ -1,0 +1,115 @@
+# name for this experiment in the local run directory
+exp_name: llama_31_70b
+# exp_name: llama_31_8b
+
+config_path: null
+
+# early stop once reaching target eval_loss
+target_eval_loss: 5.60
+
+step_time_atol: 1800
+
+global_batch_size: ${global_train_batch_size}
+
+max_grad_norm: 1.0
+
+max_steps: 30
+
+pad_token_id: -100
+
+dataset:
+  dataset_name: c4_mlperf
+  train_dataset_path: /ssd/c4/en_json/3.0.1/
+  eval_dataset_path: /ssd/c4/en_json/3.0.1/
+
+output_dir: /tmp
+
+# an OmegaConf resolver that returns the local run directory, calling a function in utils.py
+run_dir: ${path_join:${output_dir},${exp_name}}
+
+# the maximum allowed length for an input
+max_length: 8192
+
+# The optimizer to use; we use RMSprop because it works about as well as Adam and is more memory-efficient
+optimizer: ADAMW_TORCH_XLA
+
+weight_decay: 0.1
+
+# evaluate and save model every eval_every steps
+eval_frequency: 40
+
+log_frequency: -1
+
+# path to load checkpoint
+checkpoint_manager_path: /justin-map--datasets
+
+# dry run experiment with a subset of dataset
+dry_run: False
+
+nsys_profile: False
+
+memory_profile: False
+
+# shuffle train data set
+shuffle: False
+
+# use float32 in matmul in torch xla
+full_precision: False
+
+# path to save compile cache for torch xla
+local_compile_cache_dir: null
+
+mock_ckpt: True
+
+mock_data: True
+
+tp_comm_overlap: True
+
+fp8: True
+
+# tensor_parallelism and fsdp parallelism would be num_devices / tensor_parallelism
+
+tensor_parallelism: 4
+pipeline_parallelism: 2
+context_parallelism: 1
+virtual_pipeline_parallelism: 2
+gradient_accumulation_steps: 128
+
+account_for_embedding_in_pipeline_split: False
+account_for_loss_in_pipeline_split: ${account_for_embedding_in_pipeline_split}
+
+# report frequency of train step
+report_metrics_freq: 1
+
+# cache of models
+cache_local_dir: null
+
+# random seed for batch sampling
+seed: 1234
+
+# the learning rate
+lr: 8e-5
+
+# the batch size for training; for FSDP, the batch size per GPU is batch_size / (grad_accumulation_steps * num_gpus)
+per_device_train_batch_size: 1
+global_train_batch_size: -1
+
+# the batch size during evaluation and sampling, if enabled
+per_device_eval_batch_size: ${per_device_train_batch_size}
+global_eval_batch_size: -1
+
+gc_interval: 10
+
+hydra:
+  run:
+    dir: ${run_dir}
+
+model:
+  name_or_path: "Llama-3.1-70B"
+  # name_or_path: "Llama-3.1-8B"
+
+sched:
+  name: CosineAnnealing
+  warmup_steps: 8000
+  max_steps: 1200000
+  min_lr: 8e-7

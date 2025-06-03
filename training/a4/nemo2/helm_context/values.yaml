@@ -1,0 +1,45 @@
+# queue: "a4-high"
+targetPlatform: "gke"
+
+volumes:
+  # The VM host path for SSDs is assumed at /mnt/stateful_partition/kube-ephemeral-ssd
+  ssdMountPath: "/ssd"
+
+workload:
+  torchDistributedTarget: "/app/training/run.py"
+
+  # It will be mounted to /nfs on container startup using GCS fuse (EDIT THIS)
+  gcsBucketForDataCataPath: justin-map--datasets
+
+  gpus: 8 # This should be one of: {<= 8,  multiple of 8}
+  arguments:
+  # The argument name will be prefixed with '+' (see https://hydra.cc/docs/advanced/override_grammar/basic/)
+  - name: "exp_manager.explicit_log_dir"
+    value: "/nemo-experiments/results" 
+  - name: "exp_manager.exp_dir"
+    value: "/nemo-experiments/"
+
+  # If not 'null', launches a Tensorboard server on first node. By design, the job will then not exit on first node.
+  # This is primarly intended for debugging purposes, when a shared file-system or external Tensorboard is unavailable.  
+  embeddedTensorboardTarget: null
+
+network:
+  stack: "gib" # one of {"tcp", "tcpx", "tcpxo", "gib"}
+
+  #daemonVersion: "us-docker.pkg.dev/gce-ai-infra/gpudirect-tcpxo/tcpgpudmarxd-dev:v1.0.12"
+  #pluginVersion: "us-docker.pkg.dev/gce-ai-infra/gpudirect-tcpxo/nccl-plugin-gpudirecttcpx-dev:v1.0.6"
+  pluginVersion: "us-docker.pkg.dev/gce-ai-infra/gpudirect-gib/nccl-plugin-gib:v1.0.5"
+  # pluginVersion: "us-docker.pkg.dev/kernel-net-team/clouda4-nccl-dev/nccl-plugin-gib-diagnostic:v1.0.3-b200"
+
+  ncclSettings:
+  # Note: If you need to debug, using NCCL_DEBUG=INFO and NCCL_DEBUG_SUBSYS=INIT,NET are a good idea. You can look up other options.
+  - name: NCCL_DEBUG
+    value: "VERSION"
+  # - name: NCCL_DEBUG_SUBSYS
+  #   value: "INIT,NET"
+  - name: NCCL_ALGO
+    value: "Ring,Tree"
+
+  # The following NCCL settings are recommended for TCPxo only (but tunable):
+  - name: NCCL_MIN_NCHANNELS
+    value: "4"
